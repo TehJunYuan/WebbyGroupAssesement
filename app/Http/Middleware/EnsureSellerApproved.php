@@ -8,28 +8,37 @@ use Symfony\Component\HttpFoundation\Response;
 
 class EnsureSellerApproved
 {
-    /**
-     * Handle an incoming request.
-     *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
-     */
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
 
-        // Allow access if user is not a seller
-        if (!$user || !$user->hasRole('Seller')) {
-            return $next($request);
+        if (!$user) {
+            return redirect()->route('login');
         }
 
-        // Check if seller is approved
-        if (!$user->isApprovedSeller()) {
-            if ($user->isPendingSeller()) {
-                return redirect()->route('dashboard')->with('error', 'Your seller account is pending approval. Please wait for admin approval.');
-            } elseif ($user->isRejectedSeller()) {
-                return redirect()->route('dashboard')->with('error', 'Your seller account has been rejected. Please contact admin for more information.');
-            } else {
-                return redirect()->route('dashboard')->with('error', 'Your seller account requires approval. Please contact admin.');
+        if ($request->routeIs('seller.*')) {
+            if (!$user->hasRole('Seller')) {
+                abort(403, 'Only sellers can access this page.');
+            }
+
+            if (!$user->isApprovedSeller()) {
+                if ($user->isPendingSeller()) {
+                    return redirect()->route('dashboard')->with('error', 'Your seller account is pending approval. Please wait for admin approval.');
+                } elseif ($user->isRejectedSeller()) {
+                    return redirect()->route('dashboard')->with('error', 'Your seller account has been rejected. Please contact admin for more information.');
+                } else {
+                    return redirect()->route('dashboard')->with('error', 'Your seller account requires approval. Please contact admin.');
+                }
+            }
+        } else {
+            if ($user->hasRole('Seller') && !$user->isApprovedSeller()) {
+                if ($user->isPendingSeller()) {
+                    return redirect()->route('dashboard')->with('error', 'Your seller account is pending approval. Please wait for admin approval.');
+                } elseif ($user->isRejectedSeller()) {
+                    return redirect()->route('dashboard')->with('error', 'Your seller account has been rejected. Please contact admin for more information.');
+                } else {
+                    return redirect()->route('dashboard')->with('error', 'Your seller account requires approval. Please contact admin.');
+                }
             }
         }
 

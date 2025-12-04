@@ -30,7 +30,28 @@
                     @canany(['view sellers', 'approve sellers', 'reject sellers', 'manage seller accounts'])
                         <flux:navlist.item icon="shield-check" :href="route('seller-approvals.index')" :current="request()->routeIs('seller-approvals.*')" wire:navigate>{{ __('Seller Approvals') }}</flux:navlist.item>
                     @endcanany
+                    
+                    @canany(['view categories', 'create categories', 'edit categories', 'delete categories', 'manage categories'])
+                        <flux:navlist.item icon="squares-2x2" :href="route('book-categories.index')" :current="request()->routeIs('book-categories.*')" wire:navigate>{{ __('Book Categories') }}</flux:navlist.item>
+                    @endcanany
                 </flux:navlist.group>
+
+                @if(auth()->check() && auth()->user()->isApprovedSeller())
+                    <flux:navlist.group :heading="__('Seller Panel')" class="grid">
+                        @canany(['access seller panel'])
+                            <flux:navlist.item icon="layout-grid" :href="route('seller.panel')" :current="request()->routeIs('seller.panel')" wire:navigate>{{ __('Seller Dashboard') }}</flux:navlist.item>
+                        @endcanany
+                        @canany(['view own books', 'create books', 'edit own books', 'delete own books'])
+                            <flux:navlist.item icon="book-open-text" :href="route('seller.books.index')" :current="request()->routeIs('seller.books.*')" wire:navigate>{{ __('My Books') }}</flux:navlist.item>
+                        @endcanany
+                        @canany(['view own orders', 'update order status'])
+                            <flux:navlist.item icon="key" :href="route('seller.orders.index')" :current="request()->routeIs('seller.orders.*')" wire:navigate>{{ __('Orders') }}</flux:navlist.item>
+                        @endcanany
+                        @canany(['view sales analytics', 'view sales reports', 'view order statistics'])
+                            <flux:navlist.item icon="squares-2x2" :href="route('seller.analytics.index')" :current="request()->routeIs('seller.analytics.*')" wire:navigate>{{ __('Analytics') }}</flux:navlist.item>
+                        @endcanany
+                    </flux:navlist.group>
+                @endif
             </flux:navlist>
 
             <flux:spacer />

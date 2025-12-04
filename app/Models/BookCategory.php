@@ -10,11 +10,8 @@ class BookCategory extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
+    public $timestamps = false;
+
     protected $fillable = [
         'name',
         'Description',
@@ -27,11 +24,6 @@ class BookCategory extends Model
         'IsActive',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @var array<string, string>
-     */
     protected $casts = [
         'InsertAt' => 'datetime',
         'UpdateBy' => 'datetime',
@@ -39,25 +31,16 @@ class BookCategory extends Model
         'IsActive' => 'integer',
     ];
 
-    /**
-     * The model's default values for attributes.
-     *
-     * @var array<string, mixed>
-     */
     protected $attributes = [
         'IsActive' => 1,
     ];
 
-    /**
-     * Boot the model.
-     */
     protected static function boot()
     {
         parent::boot();
 
         static::addGlobalScope(new ActiveScope);
 
-        // Automatically set InsertAt and InsertUserId when creating
         static::creating(function ($category) {
             if (is_null($category->InsertAt)) {
                 $category->InsertAt = now();
@@ -67,7 +50,6 @@ class BookCategory extends Model
             }
         });
 
-        // Automatically set UpdateBy and UpdateUserId when updating
         static::updating(function ($category) {
             $category->UpdateBy = now();
             if (auth()->check()) {
@@ -76,49 +58,31 @@ class BookCategory extends Model
         });
     }
 
-    /**
-     * Get the user who inserted this category.
-     */
     public function insertedBy()
     {
         return $this->belongsTo(User::class, 'InsertUserId');
     }
 
-    /**
-     * Get the user who last updated this category.
-     */
     public function updatedBy()
     {
         return $this->belongsTo(User::class, 'UpdateUserId');
     }
 
-    /**
-     * Get the user who deleted this category.
-     */
     public function deletedBy()
     {
         return $this->belongsTo(User::class, 'DeleteUserId');
     }
 
-    /**
-     * Get only active categories.
-     */
     public function scopeActive($query)
     {
         return $query->where('IsActive', 1);
     }
 
-    /**
-     * Get only inactive (deleted) categories.
-     */
     public function scopeInactive($query)
     {
         return $query->where('IsActive', -1);
     }
 
-    /**
-     * Soft delete: set IsActive to -1
-     */
     public function softDelete()
     {
         $this->IsActive = -1;
@@ -129,9 +93,6 @@ class BookCategory extends Model
         $this->save();
     }
 
-    /**
-     * Restore: set IsActive to 1
-     */
     public function restore()
     {
         $this->IsActive = 1;

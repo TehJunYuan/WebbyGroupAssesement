@@ -45,4 +45,26 @@ Route::middleware(['auth'])->group(function () {
     Volt::route('seller-approvals', 'seller-approvals')
         ->middleware(['any.permission:view sellers|approve sellers|reject sellers|manage seller accounts'])
         ->name('seller-approvals.index');
+    
+    Volt::route('book-categories', 'book-categories')
+        ->middleware(['any.permission:view categories|create categories|edit categories|delete categories|manage categories'])
+        ->name('book-categories.index');
+});
+
+Route::middleware(['auth', 'seller.approved'])->group(function () {
+    Volt::route('seller/panel', 'seller.panel')
+        ->middleware(['any.permission:access seller panel'])
+        ->name('seller.panel');
+    
+    Volt::route('seller/books', 'seller.books')
+        ->middleware(['any.permission:view own books|create books|edit own books|delete own books'])
+        ->name('seller.books.index');
+    
+    Volt::route('seller/orders', 'seller.orders')
+        ->middleware(['any.permission:view own orders|update order status'])
+        ->name('seller.orders.index');
+    
+    Volt::route('seller/analytics', 'seller.analytics')
+        ->middleware(['any.permission:view sales analytics|view sales reports|view order statistics'])
+        ->name('seller.analytics.index');
 });
