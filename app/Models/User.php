@@ -8,11 +8,12 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
 use Laravel\Fortify\TwoFactorAuthenticatable;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, TwoFactorAuthenticatable;
+    use HasFactory, Notifiable, TwoFactorAuthenticatable, HasRoles;
 
     /**
      * The attributes that are mass assignable.
@@ -23,6 +24,11 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'seller_approval_status',
+        'seller_approved_at',
+        'seller_approved_by',
+        'seller_rejection_reason',
+        'seller_applied_at',
     ];
 
     /**
@@ -47,7 +53,41 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'seller_approved_at' => 'datetime',
+            'seller_applied_at' => 'datetime',
         ];
+    }
+    
+    /**
+     * Get the user who approved this seller.
+     */
+    public function approvedBy()
+    {
+        return $this->belongsTo(User::class, 'seller_approved_by');
+    }
+    
+    /**
+     * Check if user is an approved seller.
+     */
+    public function isApprovedSeller(): bool
+    {
+        return $this->hasRole('Seller') && $this->seller_approval_status === 'approved';
+    }
+    
+    /**
+     * Check if user is a pending seller.
+     */
+    public function isPendingSeller(): bool
+    {
+        return $this->hasRole('Seller') && $this->seller_approval_status === 'pending';
+    }
+    
+    /**
+     * Check if user is a rejected seller.
+     */
+    public function isRejectedSeller(): bool
+    {
+        return $this->hasRole('Seller') && $this->seller_approval_status === 'rejected';
     }
 
     /**

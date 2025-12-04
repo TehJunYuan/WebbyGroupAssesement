@@ -29,4 +29,20 @@ Route::middleware(['auth'])->group(function () {
             ),
         )
         ->name('two-factor.show');
+
+    Volt::route('permissions', 'permissions')
+        ->middleware(['any.permission:assign permissions|assign roles|view permissions'])
+        ->name('permissions.index');
+    
+    Volt::route('role-permissions', 'role-permissions')
+        ->middleware(['any.permission:assign roles|view roles|create roles'])
+        ->name('role-permissions.index');
+    
+    Volt::route('permissions-list', 'permissions-list')
+        ->middleware(['any.permission:view permissions|create permissions'])
+        ->name('permissions-list.index');
+    
+    Volt::route('seller-approvals', 'seller-approvals')
+        ->middleware(['any.permission:view sellers|approve sellers|reject sellers|manage seller accounts'])
+        ->name('seller-approvals.index');
 });

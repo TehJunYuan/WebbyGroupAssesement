@@ -14,6 +14,22 @@
             <flux:navlist variant="outline">
                 <flux:navlist.group :heading="__('Platform')" class="grid">
                     <flux:navlist.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>{{ __('Dashboard') }}</flux:navlist.item>
+                    
+                    @canany(['assign permissions', 'assign roles', 'view permissions'])
+                        <flux:navlist.item icon="lock-closed" :href="route('permissions.index')" :current="request()->routeIs('permissions.*')" wire:navigate>{{ __('User Permissions') }}</flux:navlist.item>
+                    @endcanany
+                    
+                    @canany(['assign roles', 'view roles', 'create roles'])
+                        <flux:navlist.item icon="user-group" :href="route('role-permissions.index')" :current="request()->routeIs('role-permissions.*')" wire:navigate>{{ __('Role Permissions') }}</flux:navlist.item>
+                    @endcanany
+                    
+                    @canany(['view permissions', 'create permissions'])
+                        <flux:navlist.item icon="key" :href="route('permissions-list.index')" :current="request()->routeIs('permissions-list.*')" wire:navigate>{{ __('Permissions List') }}</flux:navlist.item>
+                    @endcanany
+                    
+                    @canany(['view sellers', 'approve sellers', 'reject sellers', 'manage seller accounts'])
+                        <flux:navlist.item icon="shield-check" :href="route('seller-approvals.index')" :current="request()->routeIs('seller-approvals.*')" wire:navigate>{{ __('Seller Approvals') }}</flux:navlist.item>
+                    @endcanany
                 </flux:navlist.group>
             </flux:navlist>
 
