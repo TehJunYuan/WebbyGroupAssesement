@@ -11,7 +11,7 @@ new class extends Component {
     public $rejectedSellers;
     public $selectedSeller = null;
     public $search = '';
-    public $filter = 'pending'; // pending, approved, rejected
+    public $filter = 'pending';
     public $rejectionReason = '';
 
     public function mount(): void
@@ -43,20 +43,19 @@ new class extends Component {
             return;
         }
 
-        $this->pendingSellers = User::whereIn('id', $sellerIds)
-            ->where(function($query) {
-                $query->where('seller_approval_status', 'pending')
-                      ->orWhereNull('seller_approval_status');
-            })
-            ->get();
+        $allSellers = User::whereIn('id', $sellerIds)->get();
 
-        $this->approvedSellers = User::whereIn('id', $sellerIds)
-            ->where('seller_approval_status', 'approved')
-            ->get();
+        $this->approvedSellers = $allSellers->where('seller_approval_status', 1);
 
-        $this->rejectedSellers = User::whereIn('id', $sellerIds)
-            ->where('seller_approval_status', 'rejected')
-            ->get();
+        $notApproved = $allSellers->where('seller_approval_status', 0);
+        
+        $this->pendingSellers = $notApproved->filter(function($seller) {
+            return empty($seller->seller_rejection_reason);
+        });
+
+        $this->rejectedSellers = $notApproved->filter(function($seller) {
+            return !empty($seller->seller_rejection_reason);
+        });
     }
 
     public function updatedSearch(): void
@@ -64,9 +63,6 @@ new class extends Component {
         $this->loadData();
         
         if (!empty($this->search)) {
-            $query = User::where('name', 'like', '%' . $this->search . '%')
-                ->orWhere('email', 'like', '%' . $this->search . '%');
-                
             if ($this->filter === 'pending') {
                 $this->pendingSellers = $this->pendingSellers->filter(function ($user) {
                     return stripos($user->name, $this->search) !== false || 
@@ -97,7 +93,7 @@ new class extends Component {
         $seller = User::find($userId);
         if ($seller && $seller->hasRole('Seller')) {
             $seller->update([
-                'seller_approval_status' => 'approved',
+                'seller_approval_status' => 1,
                 'seller_approved_at' => now(),
                 'seller_approved_by' => auth()->id(),
                 'seller_rejection_reason' => null,
@@ -118,7 +114,7 @@ new class extends Component {
         $seller = User::find($userId);
         if ($seller && $seller->hasRole('Seller')) {
             $seller->update([
-                'seller_approval_status' => 'rejected',
+                'seller_approval_status' => 0,
                 'seller_approved_at' => null,
                 'seller_approved_by' => auth()->id(),
                 'seller_rejection_reason' => $this->rejectionReason,
@@ -157,7 +153,6 @@ new class extends Component {
     </x-action-message>
 
     <div class="grid gap-6 lg:grid-cols-2">
-        <!-- Sellers List -->
         <div class="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800">
             <div class="border-b border-neutral-200 dark:border-neutral-700 p-4">
                 <flux:heading size="lg">{{ __('Sellers') }}</flux:heading>
@@ -206,17 +201,17 @@ new class extends Component {
                                     <div class="text-sm text-neutral-600 dark:text-neutral-400">{{ $seller->email }}</div>
                                 </div>
                                 <div class="flex flex-col items-end">
-                                    @if($seller->seller_approval_status === 'pending')
-                                        <span class="rounded bg-yellow-100 px-2 py-0.5 text-xs text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300">
-                                            {{ __('Pending') }}
-                                        </span>
-                                    @elseif($seller->seller_approval_status === 'approved')
+                                    @if($seller->seller_approval_status == 1)
                                         <span class="rounded bg-green-100 px-2 py-0.5 text-xs text-green-800 dark:bg-green-900/30 dark:text-green-300">
                                             {{ __('Approved') }}
                                         </span>
-                                    @elseif($seller->seller_approval_status === 'rejected')
+                                    @elseif(!empty($seller->seller_rejection_reason))
                                         <span class="rounded bg-red-100 px-2 py-0.5 text-xs text-red-800 dark:bg-red-900/30 dark:text-red-300">
                                             {{ __('Rejected') }}
+                                        </span>
+                                    @else
+                                        <span class="rounded bg-yellow-100 px-2 py-0.5 text-xs text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300">
+                                            {{ __('Pending') }}
                                         </span>
                                     @endif
                                     @if($seller->seller_applied_at)
@@ -236,7 +231,6 @@ new class extends Component {
             </div>
         </div>
 
-        <!-- Seller Details -->
         <div class="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800">
             @if ($selectedSeller)
                 <div class="border-b border-neutral-200 dark:border-neutral-700 p-4">
@@ -244,7 +238,6 @@ new class extends Component {
                     <flux:subheading>{{ $selectedSeller->email }}</flux:subheading>
                 </div>
                 <div class="max-h-[600px] overflow-y-auto p-4 space-y-6">
-                    <!-- Seller Information -->
                     <div>
                         <flux:heading size="md" class="mb-3">{{ __('Seller Information') }}</flux:heading>
                         <div class="space-y-2">
@@ -258,17 +251,17 @@ new class extends Component {
                             </div>
                             <div class="flex justify-between">
                                 <span class="text-neutral-600 dark:text-neutral-400">{{ __('Status:') }}</span>
-                                @if($selectedSeller->seller_approval_status === 'pending')
-                                    <span class="rounded bg-yellow-100 px-2 py-0.5 text-xs text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300">
-                                        {{ __('Pending Approval') }}
-                                    </span>
-                                @elseif($selectedSeller->seller_approval_status === 'approved')
+                                @if($selectedSeller->seller_approval_status == 1)
                                     <span class="rounded bg-green-100 px-2 py-0.5 text-xs text-green-800 dark:bg-green-900/30 dark:text-green-300">
                                         {{ __('Approved') }}
                                     </span>
-                                @elseif($selectedSeller->seller_approval_status === 'rejected')
+                                @elseif(!empty($selectedSeller->seller_rejection_reason))
                                     <span class="rounded bg-red-100 px-2 py-0.5 text-xs text-red-800 dark:bg-red-900/30 dark:text-red-300">
                                         {{ __('Rejected') }}
+                                    </span>
+                                @else
+                                    <span class="rounded bg-yellow-100 px-2 py-0.5 text-xs text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300">
+                                        {{ __('Pending Approval') }}
                                     </span>
                                 @endif
                             </div>
@@ -295,12 +288,11 @@ new class extends Component {
                         </div>
                     </div>
 
-                    <!-- Action Buttons -->
-                    @if($selectedSeller->seller_approval_status !== 'approved')
+                    @if($selectedSeller->seller_approval_status != 1)
                         <div class="pt-4 border-t border-neutral-200 dark:border-neutral-700">
                             <flux:heading size="md" class="mb-3">{{ __('Actions') }}</flux:heading>
                             
-                            @if($selectedSeller->seller_approval_status === 'pending' || is_null($selectedSeller->seller_approval_status))
+                            @if(empty($selectedSeller->seller_rejection_reason))
                                 <div class="space-y-4">
                                     <flux:button 
                                         variant="primary" 
@@ -327,7 +319,7 @@ new class extends Component {
                                         </flux:button>
                                     </div>
                                 </div>
-                            @elseif($selectedSeller->seller_approval_status === 'rejected')
+                            @else
                                 <flux:button 
                                     variant="primary" 
                                     class="w-full"

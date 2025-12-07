@@ -68,9 +68,13 @@ new class extends Component {
 
         $role = Role::find($roleId);
         if ($role && $this->selectedUser->hasRole($role)) {
+            $userId = $this->selectedUser->id;
             $this->selectedUser->removeRole($role);
             $this->loadData();
-            $this->selectedUser->load('roles', 'permissions');
+            $this->selectedUser = User::find($userId);
+            if ($this->selectedUser) {
+                $this->selectedUser->load('roles', 'permissions');
+            }
             $this->dispatch('role-removed');
         }
     }
@@ -98,9 +102,13 @@ new class extends Component {
 
         $permission = Permission::find($permissionId);
         if ($permission && $this->selectedUser->hasDirectPermission($permission)) {
+            $userId = $this->selectedUser->id;
             $this->selectedUser->revokePermissionTo($permission);
             $this->loadData();
-            $this->selectedUser->load('roles', 'permissions');
+            $this->selectedUser = User::find($userId);
+            if ($this->selectedUser) {
+                $this->selectedUser->load('roles', 'permissions');
+            }
             $this->dispatch('permission-removed');
         }
     }
@@ -145,6 +153,7 @@ new class extends Component {
                 <div class="space-y-2">
                     @forelse ($users as $user)
                         <div 
+                            wire:key="user-{{ $user->id }}"
                             wire:click="selectUser({{ $user->id }})"
                             class="cursor-pointer rounded-lg border p-3 transition-colors {{ $selectedUser && $selectedUser->id === $user->id ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' : 'border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-700/50' }}"
                         >
@@ -195,12 +204,13 @@ new class extends Component {
                         <div class="space-y-2 mb-4">
                             @if ($selectedUser->roles->count() > 0)
                                 @foreach ($selectedUser->roles as $role)
-                                    <div class="flex items-center justify-between rounded-lg border border-neutral-200 dark:border-neutral-700 p-3">
+                                    <div wire:key="role-{{ $role->id }}" class="flex items-center justify-between rounded-lg border border-neutral-200 dark:border-neutral-700 p-3">
                                         <span class="font-medium">{{ $role->name }}</span>
                                         <flux:button 
                                             variant="danger" 
                                             size="sm"
                                             wire:click="removeRole({{ $role->id }})"
+                                            wire:key="remove-role-{{ $role->id }}"
                                         >
                                             {{ __('Remove') }}
                                         </flux:button>
@@ -240,12 +250,13 @@ new class extends Component {
                         <div class="space-y-2 mb-4">
                             @if ($selectedUser->permissions->count() > 0)
                                 @foreach ($selectedUser->permissions as $permission)
-                                    <div class="flex items-center justify-between rounded-lg border border-neutral-200 dark:border-neutral-700 p-3">
+                                    <div wire:key="permission-{{ $permission->id }}" class="flex items-center justify-between rounded-lg border border-neutral-200 dark:border-neutral-700 p-3">
                                         <span class="font-medium">{{ $permission->name }}</span>
                                         <flux:button 
                                             variant="danger" 
                                             size="sm"
                                             wire:click="removePermission({{ $permission->id }})"
+                                            wire:key="remove-permission-{{ $permission->id }}"
                                         >
                                             {{ __('Remove') }}
                                         </flux:button>

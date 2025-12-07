@@ -1,45 +1,44 @@
 <?php
 
 use Livewire\Volt\Component;
+use Livewire\WithPagination;
 use App\Models\BookCategory;
 use App\Models\Scopes\ActiveScope;
 use Illuminate\Support\Str;
 
 new class extends Component {
-    public $categories;
+    use WithPagination;
+
     public $search = '';
-    public $showCreateForm = false;
-    public $showEditForm = false;
+    public $showCreateModal = false;
+    public $showEditModal = false;
     public $selectedCategory = null;
     public $name = '';
     public $description = '';
 
-    public function mount(): void
+    public function updatingSearch(): void
     {
-        $this->loadData();
+        $this->resetPage();
     }
 
-    public function loadData(): void
+    public function loadCategories()
     {
-        $this->categories = BookCategory::all();
-    }
+        $query = BookCategory::withoutGlobalScope(ActiveScope::class);
 
-    public function updatedSearch(): void
-    {
-        if (empty($this->search)) {
-            $this->categories = BookCategory::all();
-        } else {
-            $this->categories = BookCategory::where('name', 'like', '%' . $this->search . '%')
-                ->orWhere('Description', 'like', '%' . $this->search . '%')
-                ->get();
+        if (!empty($this->search)) {
+            $query->where(function($q) {
+                $q->where('name', 'like', '%' . $this->search . '%')
+                  ->orWhere('Description', 'like', '%' . $this->search . '%');
+            });
         }
+
+        return $query->orderBy('name')->paginate(10);
     }
 
     public function openCreateForm(): void
     {
         $this->resetForm();
-        $this->showCreateForm = true;
-        $this->showEditForm = false;
+        $this->showCreateModal = true;
     }
 
     public function openEditForm($categoryId): void
@@ -49,16 +48,15 @@ new class extends Component {
             $this->selectedCategory = $category;
             $this->name = $category->name;
             $this->description = $category->Description ?? '';
-            $this->showEditForm = true;
-            $this->showCreateForm = false;
+            $this->showEditModal = true;
         }
     }
 
     public function closeForms(): void
     {
         $this->resetForm();
-        $this->showCreateForm = false;
-        $this->showEditForm = false;
+        $this->showCreateModal = false;
+        $this->showEditModal = false;
     }
 
     public function resetForm(): void
@@ -87,9 +85,9 @@ new class extends Component {
             'IsActive' => 1,
         ]);
 
-        $this->closeForms();
-        $this->loadData();
+        $this->resetPage();
         $this->dispatch('category-created');
+        $this->closeForms();
     }
 
     public function updateCategory(): void
@@ -116,9 +114,9 @@ new class extends Component {
                 'UpdateUserId' => auth()->id(),
             ]);
 
-            $this->closeForms();
-            $this->loadData();
+            $this->resetPage();
             $this->dispatch('category-updated');
+            $this->closeForms();
         }
     }
 
@@ -131,7 +129,7 @@ new class extends Component {
         $category = BookCategory::withoutGlobalScope(ActiveScope::class)->find($categoryId);
         if ($category) {
             $category->softDelete();
-            $this->loadData();
+            $this->resetPage();
             $this->dispatch('category-deleted');
         }
     }
@@ -162,41 +160,46 @@ new class extends Component {
         {{ __('Category deleted successfully.') }}
     </x-action-message>
 
-    @if ($showCreateForm)
-        <div class="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-6">
-            <flux:heading size="lg" class="mb-4">{{ __('Create New Category') }}</flux:heading>
-            <form wire:submit="createCategory" class="space-y-4">
-                <flux:input 
-                    wire:model="name" 
-                    :label="__('Category Name')" 
-                    type="text" 
-                    required 
-                    autofocus
-                    placeholder="e.g., Fiction, Science, Technology"
-                />
-                <flux:input 
-                    wire:model="description" 
-                    :label="__('Description')" 
-                    type="textarea"
-                    rows="3"
-                    placeholder="Enter category description..."
-                />
-                <div class="flex gap-2">
-                    <flux:button variant="primary" type="submit">
-                        {{ __('Create Category') }}
-                    </flux:button>
+    <flux:modal name="create-category-modal" wire:model="showCreateModal" class="max-w-xl" focusable>
+        <form wire:submit="createCategory" class="space-y-4">
+            <div>
+                <flux:heading size="lg">{{ __('Create New Category') }}</flux:heading>
+                <flux:subheading>{{ __('Add a new book category to the system') }}</flux:subheading>
+            </div>
+            <flux:input 
+                wire:model="name" 
+                :label="__('Category Name')" 
+                type="text" 
+                required 
+                autofocus
+                placeholder="e.g., Fiction, Science, Technology"
+            />
+            <flux:textarea 
+                wire:model="description" 
+                :label="__('Description')" 
+                rows="3"
+                placeholder="Enter category description..."
+            />
+            <div class="flex justify-end gap-2">
+                <flux:modal.close>
                     <flux:button variant="ghost" type="button" wire:click="closeForms">
                         {{ __('Cancel') }}
                     </flux:button>
-                </div>
-            </form>
-        </div>
-    @endif
+                </flux:modal.close>
+                <flux:button variant="primary" type="submit">
+                    {{ __('Create Category') }}
+                </flux:button>
+            </div>
+        </form>
+    </flux:modal>
 
-    @if ($showEditForm && $selectedCategory)
-        <div class="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-6">
-            <flux:heading size="lg" class="mb-4">{{ __('Edit Category') }}</flux:heading>
+    <flux:modal name="edit-category-modal" wire:model="showEditModal" class="max-w-xl" focusable>
+        @if ($selectedCategory)
             <form wire:submit="updateCategory" class="space-y-4">
+                <div>
+                    <flux:heading size="lg">{{ __('Edit Category') }}</flux:heading>
+                    <flux:subheading>{{ __('Update the category details') }}</flux:subheading>
+                </div>
                 <flux:input 
                     wire:model="name" 
                     :label="__('Category Name')" 
@@ -204,23 +207,24 @@ new class extends Component {
                     required 
                     autofocus
                 />
-                <flux:input 
+                <flux:textarea 
                     wire:model="description" 
                     :label="__('Description')" 
-                    type="textarea"
                     rows="3"
                 />
-                <div class="flex gap-2">
+                <div class="flex justify-end gap-2">
+                    <flux:modal.close>
+                        <flux:button variant="ghost" type="button" wire:click="closeForms">
+                            {{ __('Cancel') }}
+                        </flux:button>
+                    </flux:modal.close>
                     <flux:button variant="primary" type="submit">
                         {{ __('Update Category') }}
                     </flux:button>
-                    <flux:button variant="ghost" type="button" wire:click="closeForms">
-                        {{ __('Cancel') }}
-                    </flux:button>
                 </div>
             </form>
-        </div>
-    @endif
+        @endif
+    </flux:modal>
 
     <div class="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800">
         <div class="border-b border-neutral-200 dark:border-neutral-700 p-4">
@@ -234,51 +238,94 @@ new class extends Component {
                 />
             </div>
         </div>
-        <div class="p-4">
-            <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-                @forelse ($categories as $category)
-                    <div class="rounded-lg border border-neutral-200 dark:border-neutral-700 p-4 hover:bg-neutral-50 dark:hover:bg-neutral-700/50">
-                        <div class="mb-3">
-                            <div class="font-semibold text-lg">{{ $category->name }}</div>
-                            @if($category->Description)
-                                <div class="text-sm text-neutral-600 dark:text-neutral-400 mt-2">
-                                    {{ Str::limit($category->Description, 100) }}
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-neutral-200 dark:divide-neutral-700">
+                <thead class="bg-neutral-50 dark:bg-neutral-800">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
+                            {{ __('Category Name') }}
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
+                            {{ __('Description') }}
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
+                            {{ __('Created At') }}
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
+                            {{ __('Status') }}
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
+                            {{ __('Actions') }}
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white dark:bg-neutral-900 divide-y divide-neutral-200 dark:divide-neutral-700">
+                    @forelse ($this->loadCategories() as $category)
+                        <tr wire:key="category-{{ $category->id }}" class="hover:bg-neutral-50 dark:hover:bg-neutral-800">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+                                    {{ $category->name }}
                                 </div>
-                            @endif
-                            @if($category->InsertAt)
-                                <div class="text-xs text-neutral-500 dark:text-neutral-400 mt-2">
-                                    Created: {{ $category->InsertAt->format('M d, Y') }}
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="text-sm text-neutral-500 dark:text-neutral-400 max-w-md truncate">
+                                    {{ $category->Description ? Str::limit($category->Description, 100) : '-' }}
                                 </div>
-                            @endif
-                        </div>
-                        <div class="flex gap-2">
-                            @can('edit categories')
-                                <flux:button 
-                                    variant="ghost" 
-                                    size="sm"
-                                    wire:click="openEditForm({{ $category->id }})"
-                                >
-                                    {{ __('Edit') }}
-                                </flux:button>
-                            @endcan
-                            @can('delete categories')
-                                <flux:button 
-                                    variant="danger" 
-                                    size="sm"
-                                    wire:click="deleteCategory({{ $category->id }})"
-                                    wire:confirm="Are you sure you want to delete this category?"
-                                >
-                                    {{ __('Delete') }}
-                                </flux:button>
-                            @endcan
-                        </div>
-                    </div>
-                @empty
-                    <div class="col-span-full py-8 text-center text-neutral-500 dark:text-neutral-400">
-                        {{ __('No categories found.') }}
-                    </div>
-                @endforelse
-            </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-neutral-500 dark:text-neutral-400">
+                                    {{ $category->InsertAt ? $category->InsertAt->format('M d, Y') : '-' }}
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                @if ($category->IsActive == 1)
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+                                        {{ __('Active') }}
+                                    </span>
+                                @else
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">
+                                        {{ __('Inactive') }}
+                                    </span>
+                                @endif
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <div class="flex justify-end gap-2">
+                                    @can('edit categories')
+                                        <flux:button 
+                                            variant="ghost" 
+                                            size="sm"
+                                            wire:click="openEditForm({{ $category->id }})"
+                                            wire:key="edit-category-{{ $category->id }}"
+                                        >
+                                            {{ __('Edit') }}
+                                        </flux:button>
+                                    @endcan
+                                    @can('delete categories')
+                                        <flux:button 
+                                            variant="danger" 
+                                            size="sm"
+                                            wire:click="deleteCategory({{ $category->id }})"
+                                            wire:key="delete-category-{{ $category->id }}"
+                                            wire:confirm="Are you sure you want to delete this category?"
+                                        >
+                                            {{ __('Delete') }}
+                                        </flux:button>
+                                    @endcan
+                                </div>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="5" class="px-6 py-8 text-center text-neutral-500 dark:text-neutral-400">
+                                {{ __('No categories found.') }}
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+        <div class="border-t border-neutral-200 dark:border-neutral-700 px-4 py-3">
+            {{ $this->loadCategories()->links() }}
         </div>
     </div>
 </div>

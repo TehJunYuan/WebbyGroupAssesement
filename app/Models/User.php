@@ -53,6 +53,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'seller_approval_status' => 'boolean',
             'seller_approved_at' => 'datetime',
             'seller_applied_at' => 'datetime',
         ];
@@ -71,23 +72,17 @@ class User extends Authenticatable
      */
     public function isApprovedSeller(): bool
     {
-        return $this->hasRole('Seller') && $this->seller_approval_status === 'approved';
+        return $this->hasRole('Seller') && $this->seller_approval_status == 1;
     }
     
-    /**
-     * Check if user is a pending seller.
-     */
     public function isPendingSeller(): bool
     {
-        return $this->hasRole('Seller') && $this->seller_approval_status === 'pending';
+        return $this->hasRole('Seller') && $this->seller_approval_status == 0 && empty($this->seller_rejection_reason);
     }
     
-    /**
-     * Check if user is a rejected seller.
-     */
     public function isRejectedSeller(): bool
     {
-        return $this->hasRole('Seller') && $this->seller_approval_status === 'rejected';
+        return $this->hasRole('Seller') && $this->seller_approval_status == 0 && !empty($this->seller_rejection_reason);
     }
 
     /**
@@ -100,5 +95,40 @@ class User extends Authenticatable
             ->take(2)
             ->map(fn ($word) => Str::substr($word, 0, 1))
             ->implode('');
+    }
+
+    public function sellerInformation()
+    {
+        return $this->hasOne(SellerInformation::class, 'user_id');
+    }
+
+    public function hasSellerInformation(): bool
+    {
+        return $this->sellerInformation()->exists();
+    }
+
+    public function userInformation()
+    {
+        return $this->hasOne(UserInformation::class, 'user_id');
+    }
+
+    public function hasUserInformation(): bool
+    {
+        return $this->userInformation()->exists();
+    }
+
+    public function cartItems()
+    {
+        return $this->hasMany(Cart::class, 'user_id');
+    }
+
+    public function cart()
+    {
+        return $this->hasMany(Cart::class, 'user_id');
+    }
+
+    public function orders()
+    {
+        return $this->hasMany(Order::class, 'user_id');
     }
 }

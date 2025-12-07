@@ -5,15 +5,18 @@ namespace App\Models;
 use App\Models\Scopes\ActiveScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Spatie\Sluggable\HasSlug;
+use Spatie\Sluggable\SlugOptions;
 
 class BookCategory extends Model
 {
-    use HasFactory;
+    use HasFactory, HasSlug;
 
     public $timestamps = false;
 
     protected $fillable = [
         'name',
+        'slug',
         'Description',
         'InsertAt',
         'InsertUserId',
@@ -99,5 +102,18 @@ class BookCategory extends Model
         $this->DeleteBy = null;
         $this->DeleteUserId = null;
         $this->save();
+    }
+
+    public function getSlugOptions(): SlugOptions
+    {
+        return SlugOptions::create()
+            ->generateSlugsFrom('name')
+            ->saveSlugsTo('slug')
+            ->slugsShouldBeNoLongerThan(255);
+    }
+
+    public function getRouteKeyName(): string
+    {
+        return 'slug';
     }
 }

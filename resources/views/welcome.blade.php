@@ -25,11 +25,15 @@
             @if (Route::has('login'))
                 <nav class="flex items-center justify-end gap-4">
                     @auth
+                        @php
+                            $user = auth()->user();
+                            $homeRoute = $user->hasRole('Admin') ? route('users-list.index') : ($user->hasRole('Seller') ? route('seller.books.index') : route('shop.index'));
+                        @endphp
                         <a
-                            href="{{ url('/dashboard') }}"
+                            href="{{ $homeRoute }}"
                             class="inline-block px-5 py-1.5 dark:text-[#EDEDEC] border-[#19140035] hover:border-[#1915014a] border text-[#1b1b18] dark:border-[#3E3E3A] dark:hover:border-[#62605b] rounded-sm text-sm leading-normal"
                         >
-                            Dashboard
+                            {{ $user->hasRole('Admin') ? __('Users List') : ($user->hasRole('Seller') ? __('My Books') : __('Book Shop')) }}
                         </a>
                     @else
                         <a

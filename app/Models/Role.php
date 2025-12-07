@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Spatie\Permission\Models\Role as SpatieRole;
+use Spatie\Sluggable\HasSlug;
+use Spatie\Sluggable\SlugOptions;
 
 class Role extends SpatieRole
 {
+    use HasSlug;
     /**
      * The attributes that are mass assignable.
      *
@@ -13,6 +16,7 @@ class Role extends SpatieRole
      */
     protected $fillable = [
         'name',
+        'slug',
         'guard_name',
         'IsActive',
     ];
@@ -80,6 +84,19 @@ class Role extends SpatieRole
         $this->IsActive = 1;
         $this->deleted_at = null;
         $this->save();
+    }
+
+    public function getSlugOptions(): SlugOptions
+    {
+        return SlugOptions::create()
+            ->generateSlugsFrom('name')
+            ->saveSlugsTo('slug')
+            ->slugsShouldBeNoLongerThan(255);
+    }
+
+    public function getRouteKeyName(): string
+    {
+        return 'slug';
     }
 }
 

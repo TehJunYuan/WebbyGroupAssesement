@@ -2,38 +2,39 @@
 
 use Illuminate\Support\Str;
 use Livewire\Volt\Component;
+use Livewire\WithPagination;
 use App\Models\Role;
 use App\Models\Permission;
 
 new class extends Component {
-    public $roles;
+    use WithPagination;
+
     public $permissions;
     public $selectedRole = null;
     public $search = '';
     public $permissionSearch = '';
-    public $showCreateRole = false;
+    public $showCreateRoleModal = false;
     public $newRoleName = '';
 
     public function mount(): void
     {
-        $this->loadData();
-    }
-
-    public function loadData(): void
-    {
-        $this->roles = Role::with('permissions')->get();
         $this->permissions = Permission::all();
     }
 
-    public function updatedSearch(): void
+    public function updatingSearch(): void
     {
-        if (empty($this->search)) {
-            $this->roles = Role::with('permissions')->get();
-        } else {
-            $this->roles = Role::with('permissions')
-                ->where('name', 'like', '%' . $this->search . '%')
-                ->get();
+        $this->resetPage();
+    }
+
+    public function loadRoles()
+    {
+        $query = Role::with('permissions');
+
+        if (!empty($this->search)) {
+            $query->where('name', 'like', '%' . $this->search . '%');
         }
+
+        return $query->orderBy('name')->paginate(10);
     }
 
     public function selectRole($roleId): void
@@ -54,7 +55,7 @@ new class extends Component {
         $permission = Permission::find($permissionId);
         if ($permission && !$this->selectedRole->hasPermissionTo($permission)) {
             $this->selectedRole->givePermissionTo($permission);
-            $this->loadData();
+            $this->resetPage();
             $this->selectedRole = Role::with('permissions')->find($this->selectedRole->id);
             $this->dispatch('permission-assigned');
         }
@@ -68,9 +69,10 @@ new class extends Component {
 
         $permission = Permission::find($permissionId);
         if ($permission && $this->selectedRole->hasPermissionTo($permission)) {
+            $roleId = $this->selectedRole->id;
             $this->selectedRole->revokePermissionTo($permission);
-            $this->loadData();
-            $this->selectedRole = Role::with('permissions')->find($this->selectedRole->id);
+            $this->resetPage();
+            $this->selectedRole = Role::with('permissions')->find($roleId);
             $this->dispatch('permission-removed');
         }
     }
@@ -94,9 +96,9 @@ new class extends Component {
 
         Role::create(['name' => $this->newRoleName, 'guard_name' => 'web', 'IsActive' => 1]);
         $this->newRoleName = '';
-        $this->showCreateRole = false;
         $this->loadData();
         $this->dispatch('role-created');
+        $this->showCreateRoleModal = false;
     }
 
     public function deleteRole($roleId): void
@@ -108,7 +110,7 @@ new class extends Component {
                 $this->selectedRole = null;
             }
             $role->softDelete();
-            $this->loadData();
+            $this->resetPage();
             $this->dispatch('role-deleted');
         }
     }
@@ -121,7 +123,10 @@ new class extends Component {
             <flux:subheading>{{ __('Assign permissions to roles') }}</flux:subheading>
         </div>
         <div class="flex gap-2">
-            <flux:button variant="ghost" wire:click="$toggle('showCreateRole')">
+            <flux:button 
+                variant="ghost" 
+                wire:click="$set('showCreateRoleModal', true)"
+            >
                 {{ __('Create Role') }}
             </flux:button>
         </div>
@@ -140,29 +145,32 @@ new class extends Component {
         {{ __('Role deleted successfully.') }}
     </x-action-message>
 
-    @if ($showCreateRole)
-        <div class="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-6">
-            <flux:heading size="lg" class="mb-4">{{ __('Create New Role') }}</flux:heading>
-            <form wire:submit="createRole" class="space-y-4">
-                <flux:input 
-                    wire:model="newRoleName" 
-                    :label="__('Role Name')" 
-                    type="text" 
-                    required 
-                    autofocus
-                    placeholder="e.g., editor, moderator"
-                />
-                <div class="flex gap-2">
-                    <flux:button variant="primary" type="submit">
-                        {{ __('Create Role') }}
-                    </flux:button>
-                    <flux:button variant="ghost" type="button" wire:click="$set('showCreateRole', false)">
+    <flux:modal name="create-role-modal" wire:model="showCreateRoleModal" class="max-w-xl" focusable>
+        <form wire:submit="createRole" class="space-y-4">
+            <div>
+                <flux:heading size="lg">{{ __('Create New Role') }}</flux:heading>
+                <flux:subheading>{{ __('Add a new role to the system') }}</flux:subheading>
+            </div>
+            <flux:input 
+                wire:model="newRoleName" 
+                :label="__('Role Name')" 
+                type="text" 
+                required 
+                autofocus
+                placeholder="e.g., editor, moderator"
+            />
+            <div class="flex justify-end gap-2">
+                <flux:modal.close>
+                    <flux:button variant="ghost" type="button" wire:click="$set('showCreateRoleModal', false)">
                         {{ __('Cancel') }}
                     </flux:button>
-                </div>
-            </form>
-        </div>
-    @endif
+                </flux:modal.close>
+                <flux:button variant="primary" type="submit">
+                    {{ __('Create Role') }}
+                </flux:button>
+            </div>
+        </form>
+    </flux:modal>
 
     <div class="grid gap-6 lg:grid-cols-2">
         <!-- Roles List -->
@@ -178,54 +186,62 @@ new class extends Component {
                     />
                 </div>
             </div>
-            <div class="max-h-[600px] overflow-y-auto p-4">
-                <div class="space-y-2">
-                    @forelse ($roles as $role)
-                        <div 
-                            class="rounded-lg border p-3 transition-colors {{ $selectedRole && $selectedRole->id === $role->id ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' : 'border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-700/50' }}"
-                        >
-                            <div class="flex items-center justify-between">
-                                <div 
-                                    wire:click="selectRole({{ $role->id }})"
-                                    class="flex-1 cursor-pointer"
-                                >
-                                    <div class="font-semibold">{{ $role->name }}</div>
-                                    <div class="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-neutral-200 dark:divide-neutral-700">
+                    <thead class="bg-neutral-50 dark:bg-neutral-800">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
+                                {{ __('Role Name') }}
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
+                                {{ __('Permissions Count') }}
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
+                                {{ __('Actions') }}
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white dark:bg-neutral-900 divide-y divide-neutral-200 dark:divide-neutral-700">
+                        @forelse ($this->loadRoles() as $role)
+                            <tr 
+                                wire:key="role-{{ $role->id }}"
+                                wire:click="selectRole({{ $role->id }})"
+                                class="cursor-pointer transition-colors {{ $selectedRole && $selectedRole->id === $role->id ? 'bg-primary-50 dark:bg-primary-900/20' : 'hover:bg-neutral-50 dark:hover:bg-neutral-800' }}"
+                            >
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+                                        {{ $role->name }}
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-neutral-500 dark:text-neutral-400">
                                         {{ $role->permissions->count() }} {{ Str::plural('permission', $role->permissions->count()) }}
                                     </div>
-                                </div>
-                                <div class="ms-2">
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                     <flux:button 
                                         variant="danger" 
                                         size="sm"
                                         wire:click.stop="deleteRole({{ $role->id }})"
+                                        wire:key="delete-role-{{ $role->id }}"
                                         wire:confirm="Are you sure you want to delete this role? This will remove the role from all users."
                                     >
                                         {{ __('Delete') }}
                                     </flux:button>
-                                </div>
-                            </div>
-                            @if ($role->permissions->count() > 0)
-                                <div class="mt-2 flex flex-wrap gap-1">
-                                    @foreach ($role->permissions->take(3) as $permission)
-                                        <span class="rounded bg-primary-100 px-2 py-0.5 text-xs text-primary-800 dark:bg-primary-900/30 dark:text-primary-300">
-                                            {{ $permission->name }}
-                                        </span>
-                                    @endforeach
-                                    @if ($role->permissions->count() > 3)
-                                        <span class="rounded bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600 dark:bg-neutral-700 dark:text-neutral-300">
-                                            +{{ $role->permissions->count() - 3 }} more
-                                        </span>
-                                    @endif
-                                </div>
-                            @endif
-                        </div>
-                    @empty
-                        <div class="py-8 text-center text-neutral-500 dark:text-neutral-400">
-                            {{ __('No roles found.') }}
-                        </div>
-                    @endforelse
-                </div>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="3" class="px-6 py-8 text-center text-neutral-500 dark:text-neutral-400">
+                                    {{ __('No roles found.') }}
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+            <div class="border-t border-neutral-200 dark:border-neutral-700 px-4 py-3">
+                {{ $this->loadRoles()->links() }}
             </div>
         </div>
 
@@ -257,12 +273,13 @@ new class extends Component {
                         <div class="space-y-2 mb-4">
                             @if ($selectedRole->permissions->count() > 0)
                                 @foreach ($selectedRole->permissions as $permission)
-                                    <div class="flex items-center justify-between rounded-lg border border-neutral-200 dark:border-neutral-700 p-3">
+                                    <div wire:key="permission-{{ $permission->id }}" class="flex items-center justify-between rounded-lg border border-neutral-200 dark:border-neutral-700 p-3">
                                         <span class="font-medium">{{ $permission->name }}</span>
                                         <flux:button 
                                             variant="danger" 
                                             size="sm"
                                             wire:click="removePermission({{ $permission->id }})"
+                                            wire:key="remove-permission-{{ $permission->id }}"
                                         >
                                             {{ __('Remove') }}
                                         </flux:button>

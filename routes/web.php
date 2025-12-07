@@ -8,8 +8,19 @@ Route::get('/', function () {
     return view('welcome');
 })->name('home');
 
-Route::view('dashboard', 'dashboard')
-    ->middleware(['auth', 'verified'])
+Route::get('dashboard', function () {
+    $user = auth()->user();
+    
+    if ($user->hasRole('Admin')) {
+        return redirect()->route('users-list.index');
+    }
+    
+    if ($user->hasRole('Seller')) {
+        return redirect()->route('seller.books.index');
+    }
+    
+    return redirect()->route('shop.index');
+})->middleware(['auth', 'verified', 'user.information.complete'])
     ->name('dashboard');
 
 Route::middleware(['auth'])->group(function () {
@@ -49,6 +60,34 @@ Route::middleware(['auth'])->group(function () {
     Volt::route('book-categories', 'book-categories')
         ->middleware(['any.permission:view categories|create categories|edit categories|delete categories|manage categories'])
         ->name('book-categories.index');
+    
+    Volt::route('genders', 'genders')
+        ->middleware(['any.permission:view genders|create genders|edit genders|delete genders|manage genders'])
+        ->name('genders.index');
+    
+    Volt::route('sellers-list', 'sellers-list')
+        ->middleware(['any.permission:view sellers|manage seller accounts'])
+        ->name('sellers-list.index');
+    
+    Volt::route('users-list', 'users-list')
+        ->middleware(['any.permission:view users|manage users'])
+        ->name('users-list.index');
+
+    Volt::route('user/information', 'user.information')
+        ->name('user.information');
+    
+    Volt::route('shop', 'shop')
+        ->middleware(['user.information.complete', 'prevent.seller.from.shop'])
+        ->name('shop.index');
+    
+    Volt::route('cart', 'cart')
+        ->middleware(['user.information.complete', 'prevent.seller.from.shop'])
+        ->name('cart.index');
+});
+
+Route::middleware(['auth', 'seller.role'])->group(function () {
+    Volt::route('seller/information', 'seller.information')
+        ->name('seller.information');
 });
 
 Route::middleware(['auth', 'seller.approved'])->group(function () {

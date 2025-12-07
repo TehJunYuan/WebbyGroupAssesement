@@ -58,7 +58,13 @@ new class extends Component {
         $user = Auth::user();
 
         if ($user->hasVerifiedEmail()) {
-            $this->redirectIntended(default: route('dashboard', absolute: false));
+            $user = Auth::user();
+            $defaultRoute = $user->hasRole('Admin') 
+                ? route('users-list.index', absolute: false)
+                : ($user->hasRole('Seller') 
+                    ? route('seller.books.index', absolute: false)
+                    : route('shop.index', absolute: false));
+            $this->redirectIntended(default: $defaultRoute);
 
             return;
         }

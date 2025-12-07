@@ -27,6 +27,7 @@ class PermissionsSeeder extends Seeder
             ['name' => 'create users', 'guard_name' => $guardName],
             ['name' => 'edit users', 'guard_name' => $guardName],
             ['name' => 'delete users', 'guard_name' => $guardName],
+            ['name' => 'manage users', 'guard_name' => $guardName],
             
             // Seller Management & Approval (Admin only)
             ['name' => 'view sellers', 'guard_name' => $guardName],
@@ -40,6 +41,13 @@ class PermissionsSeeder extends Seeder
             ['name' => 'edit categories', 'guard_name' => $guardName],
             ['name' => 'delete categories', 'guard_name' => $guardName],
             ['name' => 'manage categories', 'guard_name' => $guardName],
+            
+            // Gender Management (Admin only)
+            ['name' => 'view genders', 'guard_name' => $guardName],
+            ['name' => 'create genders', 'guard_name' => $guardName],
+            ['name' => 'edit genders', 'guard_name' => $guardName],
+            ['name' => 'delete genders', 'guard_name' => $guardName],
+            ['name' => 'manage genders', 'guard_name' => $guardName],
             
             // Book Management (Admin & Seller)
             ['name' => 'view all books', 'guard_name' => $guardName], // Admin can view all
