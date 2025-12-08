@@ -51,7 +51,7 @@ class TestUsersSeeder extends Seeder
                     'name' => "Seller {$i}",
                     'password' => 'password',
                     'email_verified_at' => now(),
-                    'seller_approval_status' => 1,
+                    'seller_approval_status' => 0,
                     'seller_approved_at' => now(),
                     'seller_approved_by' => $admin->id,
                     'seller_applied_at' => now()->subDays(rand(1, 30)),
