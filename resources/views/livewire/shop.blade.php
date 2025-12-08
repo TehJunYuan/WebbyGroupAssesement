@@ -93,41 +93,23 @@ new class extends Component {
             return;
         }
 
-        $cartItem = Cart::where('user_id', auth()->id())
-            ->where('book_id', $bookId)
-            ->where('IsActive', 1)
-            ->first();
-
-        if ($cartItem) {
-            $newQuantity = $cartItem->quantity + $quantity;
-            
-            if ($newQuantity > $book->stock_quantity) {
-                $this->dispatch('insufficient-stock', quantity: $book->stock_quantity);
-                return;
-            }
-            
-            $cartItem->quantity = $newQuantity;
-            $cartItem->UpdateBy = now();
-            $cartItem->UpdateUserId = auth()->id();
-            $cartItem->save();
-        } else {
-            if ($quantity > $book->stock_quantity) {
-                $this->dispatch('insufficient-stock', quantity: $book->stock_quantity);
-                return;
-            }
-
-            Cart::create([
-                'user_id' => auth()->id(),
-                'book_id' => $bookId,
-                'quantity' => $quantity,
-                'InsertAt' => now(),
-                'InsertUserId' => auth()->id(),
-                'IsActive' => 1,
-            ]);
+        if ($quantity > $book->stock_quantity) {
+            $this->dispatch('insufficient-stock', quantity: $book->stock_quantity);
+            return;
         }
+
+        Cart::create([
+            'user_id' => auth()->id(),
+            'book_id' => $bookId,
+            'quantity' => $quantity,
+            'InsertAt' => now(),
+            'InsertUserId' => auth()->id(),
+            'IsActive' => 1,
+        ]);
 
         $this->quantities[$bookId] = 1;
         $this->dispatch('added-to-cart');
+        $this->dispatch('cart-updated');
     }
 
     public function getCoverImageUrl($book)

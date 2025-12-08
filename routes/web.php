@@ -83,6 +83,19 @@ Route::middleware(['auth'])->group(function () {
     Volt::route('cart', 'cart')
         ->middleware(['user.information.complete', 'prevent.seller.from.shop'])
         ->name('cart.index');
+    
+    Route::get('cart/count', function () {
+        if (!auth()->check()) {
+            return response()->json(['count' => 0]);
+        }
+        $count = auth()->user()->cartItems()->where('IsActive', 1)->count();
+        return response()->json(['count' => $count]);
+    })->middleware(['user.information.complete', 'prevent.seller.from.shop'])
+        ->name('cart.count');
+    
+    Volt::route('my-orders', 'user.orders')
+        ->middleware(['user.information.complete', 'prevent.seller.from.shop'])
+        ->name('user.orders.index');
 });
 
 Route::middleware(['auth', 'seller.role'])->group(function () {

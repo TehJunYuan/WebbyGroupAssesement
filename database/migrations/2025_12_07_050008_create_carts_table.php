@@ -24,7 +24,6 @@ return new class extends Migration
             $table->index('user_id');
             $table->index('book_id');
             $table->index('IsActive');
-            $table->unique(['user_id', 'book_id']);
         });
     }
 

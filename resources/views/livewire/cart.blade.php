@@ -31,7 +31,7 @@ new class extends Component {
 
     public function getTotalItems()
     {
-        return $this->loadCartItems()->sum('quantity');
+        return $this->loadCartItems()->count();
     }
 
     public function updateQuantity($cartId, $quantity): void
@@ -104,7 +104,7 @@ new class extends Component {
         
         foreach ($items as $item) {
             if (in_array($item->id, $this->selectedItems)) {
-                $count += $item->quantity;
+                $count++;
             }
         }
         
@@ -345,7 +345,7 @@ new class extends Component {
                                 {{ __('Selected Items: :count', ['count' => $this->getSelectedItemsCount()]) }}
                             </div>
                             <div class="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-                                {{ __('Total Items in Cart: :count', ['count' => $this->getTotalItems()]) }}
+                                {{ __('Total Line Items in Cart: :count', ['count' => $this->getTotalItems()]) }}
                             </div>
                         </div>
                         <div class="text-right">
